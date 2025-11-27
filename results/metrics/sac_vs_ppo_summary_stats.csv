@@ -1,0 +1,9 @@
+Metric,SAC,PPO,Winner
+Total Return,13.29%,15.49%,PPO
+Annualized Return,15.14%,17.68%,PPO
+Volatility,18.29%,17.47%,PPO
+Sharpe Ratio,0.719,0.897,PPO
+Max Drawdown,-17.10%,-15.67%,PPO
+Win Rate,53.81%,53.81%,Tie
+Episodes,223,223,PPO
+Training Time,1.88 hours,0.19 hours,SAC

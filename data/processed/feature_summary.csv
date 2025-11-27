@@ -1,0 +1,40 @@
+Category,Feature_Pattern,Description
+Return Features (4 per asset),ret_1d,1-day (daily) price return
+Return Features (4 per asset),ret_5d,5-day (weekly) price return
+Return Features (4 per asset),ret_20d,20-day (monthly) price return
+Return Features (4 per asset),ret_60d,60-day (quarterly) price return
+Volatility Features (4 per asset),vol_20d,20-day rolling volatility (annualized)
+Volatility Features (4 per asset),vol_60d,60-day rolling volatility (annualized)
+Volatility Features (4 per asset),volvol_20d,Volatility of volatility (regime indicator)
+Volatility Features (4 per asset),vol_ratio,Ratio of short-term to long-term volatility
+Technical Indicators (14 per asset),rsi_14,Relative Strength Index (14-period)
+Technical Indicators (14 per asset),macd,MACD line (12-26 EMA difference)
+Technical Indicators (14 per asset),macd_signal,MACD signal line (9-period EMA of MACD)
+Technical Indicators (14 per asset),macd_hist,MACD histogram (MACD - Signal)
+Technical Indicators (14 per asset),momentum_10d,10-day price momentum
+Technical Indicators (14 per asset),momentum_20d,20-day price momentum
+Technical Indicators (14 per asset),momentum_60d,60-day price momentum
+Technical Indicators (14 per asset),price_to_ma20,Price relative to 20-day MA
+Technical Indicators (14 per asset),price_to_ma50,Price relative to 50-day MA
+Technical Indicators (14 per asset),price_to_ma200,Price relative to 200-day MA
+Technical Indicators (14 per asset),ma20_to_ma50,20-day MA relative to 50-day MA
+Technical Indicators (14 per asset),ma50_to_ma200,50-day MA relative to 200-day MA
+Technical Indicators (14 per asset),bb_position,Position within Bollinger Bands (0-1)
+Correlation Features (3 per asset),corr_market_60d,Rolling 60-day correlation with market (SPY)
+Correlation Features (3 per asset),avg_corr_60d,Average rolling correlation with other assets
+Correlation Features (3 per asset),vol_corr_market_60d,Correlation of volatility with market volatility
+Risk Metrics (5 per asset),drawdown,Current drawdown from peak
+Risk Metrics (5 per asset),max_dd_60d,Maximum drawdown in last 60 days
+Risk Metrics (5 per asset),var_95_60d,"Value at Risk (95% confidence, 60-day)"
+Risk Metrics (5 per asset),cvar_95_60d,"Conditional VaR / Expected Shortfall (95%, 60-day)"
+Risk Metrics (5 per asset),downside_dev_60d,Downside deviation (60-day)
+Market-Wide Features (9 features),market_vol_20d,Market volatility (20-day annualized)
+Market-Wide Features (9 features),market_vol_60d,Market volatility (60-day annualized)
+Market-Wide Features (9 features),market_ret_20d,Market return (20-day)
+Market-Wide Features (9 features),market_ret_60d,Market return (60-day)
+Market-Wide Features (9 features),dispersion_20d,Cross-sectional volatility dispersion
+Market-Wide Features (9 features),breadth_1d,Daily breadth (% positive returns)
+Market-Wide Features (9 features),breadth_20d,20-day breadth indicator
+Market-Wide Features (9 features),avg_market_corr_60d,Average pairwise correlation (60-day)
+Market-Wide Features (9 features),advance_decline_ratio,Ratio of advancing to declining assets
+Market-Wide Features (9 features),market_trend_200d,Market above/below 200-day MA (0/1)

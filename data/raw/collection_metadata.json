@@ -1,0 +1,12 @@
+{
+    "collection_date": "2025-11-23 14:06:13",
+    "start_date": "2020-05-28",
+    "end_date": "2025-11-23",
+    "total_tickers_requested": 55,
+    "successful_downloads": 55,
+    "failed_downloads": 0,
+    "failed_tickers": [],
+    "average_data_points": 1381.0,
+    "data_source": "yfinance",
+    "notes": "5 years historical data for portfolio optimization project"
+}

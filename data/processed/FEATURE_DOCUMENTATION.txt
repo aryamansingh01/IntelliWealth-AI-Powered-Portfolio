@@ -1,0 +1,88 @@
+================================================================================
+FEATURE ENGINEERING DOCUMENTATION
+================================================================================
+Generated: 2025-11-23 14:28:59
+Project: Adaptive Portfolio Manager with RL
+
+Total Features: 1,605
+Total Assets: 55
+Date Range: 2021-03-12 to 2025-11-21
+Trading Days: 1,182
+
+
+Return Features (4 per asset):
+--------------------------------------------------------------------------------
+  ret_1d............................. 1-day (daily) price return
+  ret_5d............................. 5-day (weekly) price return
+  ret_20d............................ 20-day (monthly) price return
+  ret_60d............................ 60-day (quarterly) price return
+
+Volatility Features (4 per asset):
+--------------------------------------------------------------------------------
+  vol_20d............................ 20-day rolling volatility (annualized)
+  vol_60d............................ 60-day rolling volatility (annualized)
+  volvol_20d......................... Volatility of volatility (regime indicator)
+  vol_ratio.......................... Ratio of short-term to long-term volatility
+
+Technical Indicators (14 per asset):
+--------------------------------------------------------------------------------
+  rsi_14............................. Relative Strength Index (14-period)
+  macd............................... MACD line (12-26 EMA difference)
+  macd_signal........................ MACD signal line (9-period EMA of MACD)
+  macd_hist.......................... MACD histogram (MACD - Signal)
+  momentum_10d....................... 10-day price momentum
+  momentum_20d....................... 20-day price momentum
+  momentum_60d....................... 60-day price momentum
+  price_to_ma20...................... Price relative to 20-day MA
+  price_to_ma50...................... Price relative to 50-day MA
+  price_to_ma200..................... Price relative to 200-day MA
+  ma20_to_ma50....................... 20-day MA relative to 50-day MA
+  ma50_to_ma200...................... 50-day MA relative to 200-day MA
+  bb_position........................ Position within Bollinger Bands (0-1)
+
+Correlation Features (3 per asset):
+--------------------------------------------------------------------------------
+  corr_market_60d.................... Rolling 60-day correlation with market (SPY)
+  avg_corr_60d....................... Average rolling correlation with other assets
+  vol_corr_market_60d................ Correlation of volatility with market volatility
+
+Risk Metrics (5 per asset):
+--------------------------------------------------------------------------------
+  drawdown........................... Current drawdown from peak
+  max_dd_60d......................... Maximum drawdown in last 60 days
+  var_95_60d......................... Value at Risk (95% confidence, 60-day)
+  cvar_95_60d........................ Conditional VaR / Expected Shortfall (95%, 60-day)
+  downside_dev_60d................... Downside deviation (60-day)
+
+Market-Wide Features (9 features):
+--------------------------------------------------------------------------------
+  market_vol_20d..................... Market volatility (20-day annualized)
+  market_vol_60d..................... Market volatility (60-day annualized)
+  market_ret_20d..................... Market return (20-day)
+  market_ret_60d..................... Market return (60-day)
+  dispersion_20d..................... Cross-sectional volatility dispersion
+  breadth_1d......................... Daily breadth (% positive returns)
+  breadth_20d........................ 20-day breadth indicator
+  avg_market_corr_60d................ Average pairwise correlation (60-day)
+  advance_decline_ratio.............. Ratio of advancing to declining assets
+  market_trend_200d.................. Market above/below 200-day MA (0/1)
+
+================================================================================
+USAGE NOTES
+================================================================================
+
+1. All features are already calculated and aligned by date
+2. Features require 200+ days of history (due to 200-day MA)
+3. Missing values have been dropped - clean dataset ready for modeling
+4. Asset-specific features are prefixed with ticker symbol
+5. Market-wide features apply to all assets (no prefix)
+
+For HRP/Black-Litterman:
+  - Use return features (ret_20d, ret_60d)
+  - Use volatility features (vol_20d, vol_60d)
+  - Use correlation features
+
+For Reinforcement Learning:
+  - Use all features as state space
+  - Normalize features before training
+  - Consider PCA for dimensionality reduction if needed

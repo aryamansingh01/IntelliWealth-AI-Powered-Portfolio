@@ -1,0 +1,12 @@
+{
+    "total_return": 0.05461646883793495,
+    "annual_return": 0.18744405689272536,
+    "annual_volatility": 0.3187977901612137,
+    "sharpe_ratio": 0.525235939709777,
+    "max_drawdown": 0.10790096935638094,
+    "num_rebalances": 1,
+    "num_trades": 10,
+    "avg_trade_size": 48.9,
+    "final_value": 100000.0,
+    "trading_days": 78
+}

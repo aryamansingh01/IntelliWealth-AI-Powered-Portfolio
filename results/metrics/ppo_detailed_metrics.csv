@@ -1,0 +1,13 @@
+Metric,PPO (2023 Val),SciPy Optimal,HRP
+Total Return,1.64%,30.86%,2.63%
+Annualized Return,57.57%,20.69%,92.52%
+Annualized Volatility,10.96%,19.69%,8.10%
+Sharpe Ratio,5.070,0.944,11.168
+Sortino Ratio,5.577,0.921,11.727
+Max Drawdown,-1.51%,-24.82%,-0.89%
+Calmar Ratio,38.188,0.834,103.869
+Win Rate,66.67%,55.75%,80.00%
+Best Day,1.01%,5.24%,0.95%
+Worst Day,-1.51%,-4.13%,-0.89%
+Avg Daily Return,0.183%,0.082%,0.262%
+Median Daily Return,0.276%,0.075%,0.222%

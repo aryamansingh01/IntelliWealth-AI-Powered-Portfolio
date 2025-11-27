@@ -1,0 +1,56 @@
+Ticker,Name,Type
+AAPL,Apple Inc.,Stock
+MSFT,Microsoft Corp,Stock
+GOOGL,Alphabet Inc,Stock
+NVDA,NVIDIA Corp,Stock
+META,Meta Platforms,Stock
+AVGO,Broadcom Inc,Stock
+ADBE,Adobe Inc,Stock
+CRM,Salesforce,Stock
+ORCL,Oracle Corp,Stock
+CSCO,Cisco Systems,Stock
+JPM,JPMorgan Chase,Stock
+BAC,Bank of America,Stock
+WFC,Wells Fargo,Stock
+GS,Goldman Sachs,Stock
+MS,Morgan Stanley,Stock
+C,Citigroup,Stock
+BLK,BlackRock,Stock
+SCHW,Charles Schwab,Stock
+AXP,American Express,Stock
+USB,U.S. Bancorp,Stock
+UNH,UnitedHealth Group,Stock
+JNJ,Johnson & Johnson,Stock
+LLY,Eli Lilly,Stock
+ABBV,AbbVie Inc,Stock
+MRK,Merck & Co,Stock
+PFE,Pfizer Inc,Stock
+TMO,Thermo Fisher,Stock
+ABT,Abbott Labs,Stock
+DHR,Danaher Corp,Stock
+AMGN,Amgen Inc,Stock
+AMZN,Amazon.com,Stock
+TSLA,Tesla Inc,Stock
+WMT,Walmart,Stock
+HD,Home Depot,Stock
+MCD,McDonalds,Stock
+NKE,Nike Inc,Stock
+SBUX,Starbucks,Stock
+TGT,Target Corp,Stock
+LOW,Lowes Companies,Stock
+TJX,TJX Companies,Stock
+XOM,Exxon Mobil,Stock
+CVX,Chevron Corp,Stock
+COP,ConocoPhillips,Stock
+BA,Boeing Co,Stock
+CAT,Caterpillar,Stock
+RTX,Raytheon Tech,Stock
+HON,Honeywell,Stock
+UPS,United Parcel Service,Stock
+GE,General Electric,Stock
+DE,Deere & Co,Stock
+SPY,S&P 500 ETF,ETF
+QQQ,Nasdaq 100 ETF,ETF
+IWM,Russell 2000 ETF,ETF
+EFA,EAFE International ETF,ETF
+AGG,Bond Aggregate ETF,ETF
