@@ -1,8 +1,5 @@
 # 🤖 IntelliWealth AI-Powered Portfolio Manager
 
-[
-[
-[
 
 > **AI-driven portfolio optimization and paper trading using reinforcement learning (PPO) with real-time risk management and SQLite analytics logging.**
 
