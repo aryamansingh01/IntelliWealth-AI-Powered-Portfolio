@@ -21,7 +21,7 @@ import time
 
 warnings.filterwarnings('ignore')
 
-# Database setup
+# ============= DATABASE SETUP =============
 try:
     conn = sqlite3.connect("usage_log.db", check_same_thread=False)
     c = conn.cursor()
@@ -39,15 +39,15 @@ try:
 except Exception as e:
     st.warning(f"Database warning (non-critical): {e}")
 
-# Page configuration
+# ============= PAGE CONFIGURATION =============
 st.set_page_config(
     page_title="IntelliWealth: AI-Powered Portfolio",
-    page_icon="ðŸ“ˆ",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for dark theme
+# ============= CUSTOM CSS =============
 st.markdown("""
     <style>
     .main {background-color: #0e1117;}
@@ -85,16 +85,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Title and description
-st.title("ðŸ¤– IntelliWealth: AI-Powered Portfolio")
+# ============= TITLE =============
+st.title("🤖 IntelliWealth: AI-Powered Portfolio")
 st.markdown("**Real-time portfolio management using trained PPO reinforcement learning model**")
 
-# Sidebar configuration
+# ============= SIDEBAR CONFIGURATION =============
 with st.sidebar:
-    st.header("âš™ï¸ Configuration")
+    st.header("⚙️ Configuration")
     
     with st.form("config_form"):
-        # Portfolio configuration
+        # Portfolio Setup
         st.subheader("Portfolio Setup")
         default_tickers = "AAPL,MSFT,GOOGL,AMZN,META,JPM,BAC,UNH,JNJ,WMT"
         tickers_input = st.text_area(
@@ -105,7 +105,7 @@ with st.sidebar:
         )
         ticker_list = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
         
-        st.info(f"ðŸ“Š Trading with {len(ticker_list)} assets: {', '.join(ticker_list)}")
+        st.info(f"📊 Trading with {len(ticker_list)} assets: {', '.join(ticker_list)}")
         
         initial_capital = st.number_input(
             "Initial Capital ($)", 
@@ -115,7 +115,7 @@ with st.sidebar:
             step=100000
         )
         
-        # Simulation parameters
+        # Simulation Parameters
         st.subheader("Simulation Parameters")
         lookback_days = st.slider(
             "Lookback Period (days)", 
@@ -147,21 +147,18 @@ with st.sidebar:
             key="risk_level"
         )
         
-        # Submit button
-        run_button = st.form_submit_button("ðŸš€ Start Paper Trading", use_container_width=True)
+        run_button = st.form_submit_button("🚀 Start Paper Trading", use_container_width=True)
 
-# Main content area
+# ============= MAIN CONTENT =============
 if run_button:
     start_time = time.time()
-    
-    # Progress tracking
     progress_container = st.empty()
     status_container = st.empty()
     
     try:
-        # ============= STEP 1: VALIDATE TICKERS =============
+        # STEP 1: VALIDATE TICKERS
         if not ticker_list or len(ticker_list) == 0:
-            status_container.error("âŒ Please enter at least one ticker symbol")
+            status_container.error("❌ Please enter at least one ticker symbol")
             st.stop()
         
         # Apply risk filters
@@ -169,17 +166,17 @@ if run_button:
             safe_etfs = ["VOO", "SCHB", "IVV", "AGG", "BND", "VTI", "VTSAX", "SPLG", "SPYG"]
             ticker_list = [t for t in ticker_list if t in safe_etfs]
             if not ticker_list:
-                status_container.warning("âš ï¸ No safe ETFs found in your list. Using default safe ETFs.")
+                status_container.warning("⚠️ No safe ETFs found. Using default safe ETFs.")
                 ticker_list = ["VOO", "BND"]
                 
         elif risk_level == "Moderate risk (Stocks & ETFs)":
-            avoid_high_risk = ["GME", "AMC", "MEME", "NVDA"]  # Example volatile stocks
+            avoid_high_risk = ["GME", "AMC", "MEME", "NVDA"]
             ticker_list = [t for t in ticker_list if t not in avoid_high_risk]
         
-        st.info(f"âœ… Trading with {len(ticker_list)} assets: {', '.join(ticker_list)}")
+        st.info(f"✅ Trading with {len(ticker_list)} assets: {', '.join(ticker_list)}")
         
-        # ============= STEP 2: DOWNLOAD MARKET DATA =============
-        progress_container.info("ðŸ“Š Downloading historical market data...")
+        # STEP 2: DOWNLOAD MARKET DATA
+        progress_container.info("📊 Downloading historical market data...")
         
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days + 100)
@@ -209,36 +206,35 @@ if run_button:
             if isinstance(prices, pd.Series):
                 prices = prices.to_frame(name=ticker_list[0])
             
-            # Forward fill then backfill missing values
-            prices = prices.fillna(method='ffill').fillna(method='bfill').dropna()
+            # Handle missing values (Python 3.13 compatible)
+            prices = prices.ffill().bfill().dropna()
             
             # Validate data
             if len(prices) < 60:
                 status_container.error(
-                    f"âŒ **Insufficient data**: Only {len(prices)} days available. "
+                    f"❌ **Insufficient data**: Only {len(prices)} days available.\n"
                     f"Try:\n"
-                    f"â€¢ Different tickers (AAPL, MSFT, GOOGL work reliably)\n"
-                    f"â€¢ Longer lookback period (500+ days)\n"
-                    f"â€¢ Check tickers are valid on Yahoo Finance"
+                    f"• Different tickers (AAPL, MSFT, GOOGL work reliably)\n"
+                    f"• Longer lookback period (500+ days)\n"
+                    f"• Check tickers are valid on Yahoo Finance"
                 )
                 st.stop()
             
-            progress_container.success(f"âœ… Downloaded {len(prices)} trading days")
+            progress_container.success(f"✅ Downloaded {len(prices)} trading days")
             
         except Exception as download_error:
             status_container.error(
-                f"âŒ **Data download failed**: {str(download_error)}\n\n"
+                f"❌ **Data download failed**: {str(download_error)}\n\n"
                 f"Try:\n"
-                f"â€¢ Check ticker symbols (e.g., AAPL, MSFT)\n"
-                f"â€¢ Use different tickers\n"
-                f"â€¢ Reduce lookback period"
+                f"• Check ticker symbols (e.g., AAPL, MSFT)\n"
+                f"• Use different tickers\n"
+                f"• Reduce lookback period"
             )
             st.stop()
         
-        # ============= STEP 3: LOAD MODEL =============
-        progress_container.info("ðŸ¤– Loading AI model...")
+        # STEP 3: LOAD MODEL
+        progress_container.info("🤖 Loading AI model...")
         
-        # Try multiple model paths
         model_paths = [
             "notebooks/models/ppo_dynamic_portfolio_padded",
             "models/ppo_dynamic_portfolio_padded",
@@ -254,22 +250,19 @@ if run_button:
                     model = PPO.load(path)
                     model_path = path
                     break
-                except Exception as e:
+                except Exception:
                     continue
         
         if model is None:
             status_container.warning(
-                "âš ï¸ **Model not found** - Using fallback strategy\n\n"
-                "The pre-trained PPO model will be loaded on next deployment. "
+                "⚠️ **Model not found** - Using fallback strategy\n\n"
                 "Using equal-weight portfolio for this session."
             )
-            # Use equal-weight fallback
             use_fallback = True
         else:
-            status_container.success("âœ… Model loaded successfully")
+            status_container.success("✅ Model loaded successfully")
             use_fallback = False
             
-            # Load config
             config_path = os.path.join(os.path.dirname(model_path), "training_config.json")
             if os.path.exists(config_path):
                 with open(config_path, "r") as f:
@@ -278,8 +271,8 @@ if run_button:
             else:
                 max_assets = len(ticker_list)
         
-        # ============= STEP 4: CREATE ENVIRONMENT =============
-        progress_container.info("âš™ï¸ Initializing portfolio environment...")
+        # STEP 4: CREATE ENVIRONMENT
+        progress_container.info("⚙️ Initializing portfolio environment...")
         
         try:
             env = DynamicPortfolioEnv(
@@ -293,53 +286,45 @@ if run_button:
             )
             
             obs, _ = env.reset()
-            progress_container.success("âœ… Environment initialized")
+            progress_container.success("✅ Environment initialized")
             
         except Exception as env_error:
-            status_container.error(f"âŒ Environment creation failed: {str(env_error)}")
+            status_container.error(f"❌ Environment creation failed: {str(env_error)}")
             st.stop()
         
-        # ============= STEP 5: RUN SIMULATION =============
-        progress_container.info("ðŸ”„ Running portfolio simulation...")
+        # STEP 5: RUN SIMULATION
+        progress_container.info("🔄 Running portfolio simulation...")
         
-        # Initialize tracking
         portfolio_values = [initial_capital]
         dates = [prices.index[60]]
         weights_history = []
         cash_history = [initial_capital]
         
         progress_bar = progress_container.progress(0)
-        
         total_steps = len(prices) - 61
         
         for i in range(60, len(prices) - 1):
             try:
-                # Get observation
                 obs = env.feature_engineer.get_features(prices, i)
                 
-                # Get action from model or use equal weight
                 if use_fallback:
-                    # Equal-weight portfolio
                     action = np.ones(len(ticker_list)) / len(ticker_list)
                 else:
                     action, _ = model.predict(obs, deterministic=True)
                 
-                # Take step
                 obs, reward, done, _, info = env.step(action)
                 
-                # Track results
                 portfolio_values.append(info['portfolio_value'])
                 dates.append(prices.index[i + 1])
                 weights_history.append(action[:len(ticker_list)])
                 cash_history.append(env.cash)
                 
-                # Update progress
                 progress = (i - 59) / total_steps
                 progress_bar.progress(min(progress, 0.99))
                 
                 if i % 30 == 0:
                     status_container.info(
-                        f"ðŸ”„ Processing: {prices.index[i].strftime('%Y-%m-%d')} "
+                        f"🔄 Processing: {prices.index[i].strftime('%Y-%m-%d')} "
                         f"({i-59}/{total_steps}) | Portfolio: ${portfolio_values[-1]:,.0f}"
                     )
                 
@@ -351,10 +336,9 @@ if run_button:
                 continue
         
         progress_bar.progress(1.0)
-        progress_container.success("âœ… Simulation complete!")
+        progress_container.success("✅ Simulation complete!")
         
-        # ============= STEP 6: PROCESS RESULTS =============
-        # Create results DataFrame
+        # STEP 6: PROCESS RESULTS
         results_df = pd.DataFrame({
             'date': dates,
             'portfolio_value': portfolio_values,
@@ -400,24 +384,24 @@ if run_button:
             )
             conn.commit()
         except:
-            pass  # Non-critical if logging fails
+            pass
         
     except Exception as e:
         progress_container.empty()
-        status_container.error(f"âŒ Unexpected error: {str(e)}")
+        status_container.error(f"❌ Unexpected error: {str(e)}")
         st.exception(e)
         st.stop()
     
     # ============= DISPLAY RESULTS =============
     st.markdown("---")
-    st.success(f"âœ… Simulation completed in {duration}s")
+    st.success(f"✅ Simulation completed in {duration}s")
     
     # Metrics display
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         delta_color = "delta-positive" if total_return > 0 else "delta-negative"
-        delta_symbol = "â†‘" if total_return > 0 else "â†“"
+        delta_symbol = "↑" if total_return > 0 else "↓"
         st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-label">Final Value</div>
@@ -460,8 +444,8 @@ if run_button:
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["ðŸ“ˆ Performance", "ðŸ’¼ Allocation", "ðŸ“Š Statistics", "ðŸ“¥ Export"])
+    # Results tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Performance", "💼 Allocation", "📊 Statistics", "📥 Export"])
     
     with tab1:
         st.subheader("Portfolio Performance")
@@ -473,7 +457,6 @@ if run_button:
             row_heights=[0.7, 0.3]
         )
         
-        # Portfolio value
         fig.add_trace(
             go.Scatter(
                 x=results_df.index, 
@@ -493,7 +476,6 @@ if run_button:
             row=1, col=1
         )
         
-        # Drawdown
         drawdown = ((results_df['portfolio_value'].cummax() - results_df['portfolio_value']) / 
                    results_df['portfolio_value'].cummax()) * 100
         
@@ -527,7 +509,6 @@ if run_button:
         st.subheader("Portfolio Allocation Over Time")
         
         fig = go.Figure()
-        
         for ticker in ticker_list:
             fig.add_trace(go.Scatter(
                 x=weights_df.index,
@@ -546,10 +527,8 @@ if run_button:
             paper_bgcolor='#0e1117',
             plot_bgcolor='#0e1117'
         )
-        
         st.plotly_chart(fig, use_container_width=True)
         
-        # Average weights
         st.subheader("Average Portfolio Weights")
         avg_weights = weights_df.mean().sort_values(ascending=False)
         
@@ -596,18 +575,9 @@ if run_button:
             st.markdown("### Portfolio Metrics")
             metrics_df = pd.DataFrame({
                 'Metric': [
-                    'Initial Capital',
-                    'Final Value',
-                    'Total Return',
-                    'Annualized Return',
-                    'Sharpe Ratio',
-                    'Max Drawdown',
-                    'Volatility (Annual)',
-                    'Best Day',
-                    'Worst Day',
-                    'Avg Daily Return',
-                    'Win Rate',
-                    'Total Trading Days'
+                    'Initial Capital', 'Final Value', 'Total Return', 'Annualized Return',
+                    'Sharpe Ratio', 'Max Drawdown', 'Volatility (Annual)',
+                    'Best Day', 'Worst Day', 'Avg Daily Return', 'Win Rate', 'Total Trading Days'
                 ],
                 'Value': [
                     f"${initial_capital:,.2f}",
@@ -661,7 +631,7 @@ if run_button:
             st.markdown("### Download Portfolio Data")
             csv = results_df.to_csv()
             st.download_button(
-                label="ðŸ“¥ Download Portfolio Values (CSV)",
+                label="📥 Download Portfolio Values (CSV)",
                 data=csv,
                 file_name=f"portfolio_paper_trading_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -672,7 +642,7 @@ if run_button:
             st.markdown("### Download Allocation Data")
             weights_csv = weights_df.to_csv()
             st.download_button(
-                label="ðŸ“¥ Download Weights History (CSV)",
+                label="📥 Download Weights History (CSV)",
                 data=weights_csv,
                 file_name=f"weights_history_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -680,14 +650,13 @@ if run_button:
             )
 
 else:
-    # Show placeholder when not running
-    st.info("ðŸ‘ˆ Configure your portfolio parameters in the sidebar and click 'ðŸš€ Start Paper Trading' to begin")
+    st.info("👈 Configure your portfolio parameters in the sidebar and click '🚀 Start Paper Trading' to begin")
     
-    st.subheader("ðŸ“Š Dashboard Features")
+    st.subheader("📊 Dashboard Features")
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### ðŸ“ˆ Portfolio Performance")
+        st.markdown("### 📈 Portfolio Performance")
         st.markdown("""
         - Real-time portfolio value tracking
         - Cumulative return visualization
@@ -696,7 +665,7 @@ else:
         """)
     
     with col2:
-        st.markdown("### ðŸ’¼ Asset Allocation")
+        st.markdown("### 💼 Asset Allocation")
         st.markdown("""
         - Dynamic weight adjustments over time
         - Stacked area chart visualization
@@ -704,14 +673,14 @@ else:
         - Export allocation history
         """)
     
-    with st.expander("â„¹ï¸ How to Use", expanded=True):
+    with st.expander("ℹ️ How to Use", expanded=True):
         st.markdown("""
         ### Getting Started
         
         1. **Configure Portfolio**: Enter your desired tickers (e.g., AAPL,MSFT,GOOGL)
         2. **Set Parameters**: Choose initial capital, lookback period, and commission rate
         3. **Select Risk Level**: Choose your risk preference (Low/Moderate/High)
-        4. **Run Simulation**: Click the 'ðŸš€ Start Paper Trading' button
+        4. **Run Simulation**: Click the '🚀 Start Paper Trading' button
         5. **Analyze Results**: View performance metrics, allocation charts, and statistics
         6. **Export Data**: Download results as CSV for further analysis
         
