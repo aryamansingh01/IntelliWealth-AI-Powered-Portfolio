@@ -1,7 +1,7 @@
 """
-Streamlit Paper Trading Dashboard for Adaptive Portfolio Manager
-Run with: streamlit run streamlit_paper_trading.py
-Updated for Python 3.13 + Streamlit Cloud compatibility
+Streamlit Paper Trading Dashboard - Adaptive Portfolio Manager
+Run: streamlit run streamlit_paper_trading.py
+Python 3.13 Compatible - Enhanced Error Handling
 """
 
 import streamlit as st
@@ -94,7 +94,6 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     with st.form("config_form"):
-        # Portfolio Setup
         st.subheader("Portfolio Setup")
         default_tickers = "AAPL,MSFT,GOOGL,AMZN,META,JPM,BAC,UNH,JNJ,WMT"
         tickers_input = st.text_area(
@@ -115,7 +114,6 @@ with st.sidebar:
             step=100000
         )
         
-        # Simulation Parameters
         st.subheader("Simulation Parameters")
         lookback_days = st.slider(
             "Lookback Period (days)", 
@@ -135,7 +133,6 @@ with st.sidebar:
             help="Trading commission percentage"
         ) / 100
         
-        # Risk Preference
         st.subheader("Risk Preference")
         risk_level = st.radio(
             "Select Your Risk Preference",
@@ -175,27 +172,34 @@ if run_button:
         
         st.info(f"✅ Trading with {len(ticker_list)} assets: {', '.join(ticker_list)}")
         
-        # STEP 2: DOWNLOAD MARKET DATA
+        # STEP 2: DOWNLOAD MARKET DATA (FIXED)
         progress_container.info("📊 Downloading historical market data...")
         
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days + 100)
         
         try:
+            # FIX: Use explicit progress=False and add timeout
             data = yf.download(
                 ticker_list, 
                 start=start_date.strftime('%Y-%m-%d'), 
                 end=end_date.strftime('%Y-%m-%d'),
                 auto_adjust=True, 
                 progress=False,
-                threads=True,
-                timeout=30
+                timeout=30,
+                ignore_tz=True
             )
+            
+            # Validate we got data
+            if data is None or data.empty:
+                raise Exception("No data returned from Yahoo Finance")
             
             # Handle single vs multiple tickers
             if len(ticker_list) == 1:
-                data = data.to_frame()
-                data.columns = pd.MultiIndex.from_product([data.columns, ticker_list])
+                if len(data.columns) > 0:
+                    data = pd.DataFrame({ticker_list[0]: data['Close']})
+                else:
+                    raise Exception(f"No data for {ticker_list[0]}")
             
             # Extract closing prices
             if isinstance(data.columns, pd.MultiIndex):
@@ -204,19 +208,20 @@ if run_button:
                 prices = data
             
             if isinstance(prices, pd.Series):
-                prices = prices.to_frame(name=ticker_list[0])
+                prices = prices.to_frame()
             
             # Handle missing values (Python 3.13 compatible)
             prices = prices.ffill().bfill().dropna()
             
-            # Validate data
-            if len(prices) < 60:
+            # Validate data (FIX: Check if we have data)
+            if prices.empty or len(prices) < 60:
                 status_container.error(
-                    f"❌ **Insufficient data**: Only {len(prices)} days available.\n"
-                    f"Try:\n"
-                    f"• Different tickers (AAPL, MSFT, GOOGL work reliably)\n"
-                    f"• Longer lookback period (500+ days)\n"
-                    f"• Check tickers are valid on Yahoo Finance"
+                    f"❌ **Insufficient data**: Got {len(prices) if not prices.empty else 0} days.\n\n"
+                    f"**Solutions:**\n"
+                    f"1. Use major tickers: AAPL, MSFT, GOOGL, AMZN, META\n"
+                    f"2. Increase lookback period (500+ days)\n"
+                    f"3. Check tickers are valid (AAPL not APL)\n"
+                    f"4. Try different tickers: JPM, BAC, UNH, JNJ, WMT"
                 )
                 st.stop()
             
@@ -225,10 +230,11 @@ if run_button:
         except Exception as download_error:
             status_container.error(
                 f"❌ **Data download failed**: {str(download_error)}\n\n"
-                f"Try:\n"
-                f"• Check ticker symbols (e.g., AAPL, MSFT)\n"
-                f"• Use different tickers\n"
-                f"• Reduce lookback period"
+                f"**Try:**\n"
+                f"• Use different tickers (AAPL, MSFT, GOOGL)\n"
+                f"• Check internet connection\n"
+                f"• Verify ticker symbols\n"
+                f"• Try with single ticker first"
             )
             st.stop()
         
@@ -444,7 +450,6 @@ if run_button:
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Results tabs
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Performance", "💼 Allocation", "📊 Statistics", "📥 Export"])
     
     with tab1:
@@ -702,9 +707,14 @@ else:
         ### Troubleshooting
         
         **"Insufficient data" error?**
-        - Use different tickers (AAPL, MSFT, GOOGL are reliable)
-        - Increase lookback period (500+ days)
-        - Verify tickers exist on Yahoo Finance
+        - Use major tickers: AAPL, MSFT, GOOGL, AMZN, META
+        - Increase lookback period (500+ days recommended)
+        - Check tickers are spelled correctly
+        
+        **"Data download failed" error?**
+        - Check your internet connection
+        - Try again in a few seconds
+        - Use different tickers
         
         **"Model not found" warning?**
         - This is normal on first deployment
