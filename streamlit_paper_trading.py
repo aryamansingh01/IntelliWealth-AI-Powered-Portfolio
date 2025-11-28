@@ -1,7 +1,7 @@
 """
 Streamlit Paper Trading Dashboard - Adaptive Portfolio Manager
 Run: streamlit run streamlit_paper_trading.py
-Python 3.13 Compatible - Enhanced Error Handling
+Python 3.13 + Streamlit Cloud Compatible - Robust YFinance Fallback
 """
 
 import streamlit as st
@@ -18,6 +18,7 @@ import os
 import warnings
 import sqlite3
 import time
+import requests
 
 warnings.filterwarnings('ignore')
 
@@ -89,18 +90,49 @@ st.markdown("""
 st.title("🤖 IntelliWealth: AI-Powered Portfolio")
 st.markdown("**Real-time portfolio management using trained PPO reinforcement learning model**")
 
+# ============= YFINANCE DOWNLOAD FUNCTION (ROBUST) =============
+@st.cache_data(ttl=3600)
+def download_stock_data(ticker_list, start_date, end_date, max_retries=3):
+    """
+    Download stock data with retry logic and fallback strategy
+    """
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(
+                ticker_list,
+                start=start_date.strftime('%Y-%m-%d'),
+                end=end_date.strftime('%Y-%m-%d'),
+                auto_adjust=True,
+                progress=False,
+                timeout=15,
+                ignore_tz=True,
+                threads=False  # CRITICAL: Disable threads on Cloud
+            )
+            
+            if data is not None and not data.empty:
+                return data, None
+                
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+                continue
+            else:
+                return None, str(e)
+    
+    return None, "Max retries exceeded"
+
 # ============= SIDEBAR CONFIGURATION =============
 with st.sidebar:
     st.header("⚙️ Configuration")
     
     with st.form("config_form"):
         st.subheader("Portfolio Setup")
-        default_tickers = "AAPL,MSFT,GOOGL,AMZN,META,JPM,BAC,UNH,JNJ,WMT"
+        default_tickers = "AAPL,MSFT,GOOGL,AMZN"  # Reduced for reliability
         tickers_input = st.text_area(
             "Enter Tickers (comma-separated)", 
             value=default_tickers, 
             height=100,
-            help="Enter stock tickers separated by commas"
+            help="Use reliable tickers: AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA"
         )
         ticker_list = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
         
@@ -110,7 +142,7 @@ with st.sidebar:
             "Initial Capital ($)", 
             min_value=10000, 
             max_value=10000000, 
-            value=1000000,
+            value=100000,
             step=100000
         )
         
@@ -118,8 +150,8 @@ with st.sidebar:
         lookback_days = st.slider(
             "Lookback Period (days)", 
             min_value=60, 
-            max_value=730, 
-            value=251,
+            max_value=365, 
+            value=180,
             step=10,
             help="Number of historical days to analyze"
         )
@@ -160,48 +192,39 @@ if run_button:
         
         # Apply risk filters
         if risk_level == "Low risk (Safe ETFs only)":
-            safe_etfs = ["VOO", "SCHB", "IVV", "AGG", "BND", "VTI", "VTSAX", "SPLG", "SPYG"]
+            safe_etfs = ["VOO", "BND", "SCHB", "IVV", "AGG"]
             ticker_list = [t for t in ticker_list if t in safe_etfs]
             if not ticker_list:
-                status_container.warning("⚠️ No safe ETFs found. Using default safe ETFs.")
                 ticker_list = ["VOO", "BND"]
                 
         elif risk_level == "Moderate risk (Stocks & ETFs)":
-            avoid_high_risk = ["GME", "AMC", "MEME", "NVDA"]
+            avoid_high_risk = ["GME", "AMC", "MEME"]
             ticker_list = [t for t in ticker_list if t not in avoid_high_risk]
         
         st.info(f"✅ Trading with {len(ticker_list)} assets: {', '.join(ticker_list)}")
         
-        # STEP 2: DOWNLOAD MARKET DATA (FIXED)
-        progress_container.info("📊 Downloading historical market data...")
+        # STEP 2: DOWNLOAD MARKET DATA (WITH RETRY)
+        progress_container.info("📊 Downloading historical market data (may take 30-45 seconds)...")
         
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days + 100)
         
-        try:
-            # FIX: Use explicit progress=False and add timeout
-            data = yf.download(
-                ticker_list, 
-                start=start_date.strftime('%Y-%m-%d'), 
-                end=end_date.strftime('%Y-%m-%d'),
-                auto_adjust=True, 
-                progress=False,
-                timeout=30,
-                ignore_tz=True
+        # Download with retries
+        data, download_error = download_stock_data(ticker_list, start_date, end_date)
+        
+        if data is None or data.empty:
+            status_container.error(
+                f"❌ **Data download failed after retries**: {download_error}\n\n"
+                f"**Troubleshooting:**\n"
+                f"1. Use simpler tickers: AAPL, MSFT, GOOGL, AMZN\n"
+                f"2. Try with just 2-3 tickers\n"
+                f"3. Check your internet connection\n"
+                f"4. Wait 30 seconds and try again (rate limits)"
             )
-            
-            # Validate we got data
-            if data is None or data.empty:
-                raise Exception("No data returned from Yahoo Finance")
-            
-            # Handle single vs multiple tickers
-            if len(ticker_list) == 1:
-                if len(data.columns) > 0:
-                    data = pd.DataFrame({ticker_list[0]: data['Close']})
-                else:
-                    raise Exception(f"No data for {ticker_list[0]}")
-            
-            # Extract closing prices
+            st.stop()
+        
+        # Extract prices
+        try:
             if isinstance(data.columns, pd.MultiIndex):
                 prices = data["Close"]
             else:
@@ -210,32 +233,15 @@ if run_button:
             if isinstance(prices, pd.Series):
                 prices = prices.to_frame()
             
-            # Handle missing values (Python 3.13 compatible)
             prices = prices.ffill().bfill().dropna()
             
-            # Validate data (FIX: Check if we have data)
             if prices.empty or len(prices) < 60:
-                status_container.error(
-                    f"❌ **Insufficient data**: Got {len(prices) if not prices.empty else 0} days.\n\n"
-                    f"**Solutions:**\n"
-                    f"1. Use major tickers: AAPL, MSFT, GOOGL, AMZN, META\n"
-                    f"2. Increase lookback period (500+ days)\n"
-                    f"3. Check tickers are valid (AAPL not APL)\n"
-                    f"4. Try different tickers: JPM, BAC, UNH, JNJ, WMT"
-                )
-                st.stop()
+                raise Exception(f"Insufficient  {len(prices)} rows")
             
             progress_container.success(f"✅ Downloaded {len(prices)} trading days")
             
-        except Exception as download_error:
-            status_container.error(
-                f"❌ **Data download failed**: {str(download_error)}\n\n"
-                f"**Try:**\n"
-                f"• Use different tickers (AAPL, MSFT, GOOGL)\n"
-                f"• Check internet connection\n"
-                f"• Verify ticker symbols\n"
-                f"• Try with single ticker first"
-            )
+        except Exception as parse_error:
+            status_container.error(f"❌ Data parsing error: {str(parse_error)}")
             st.stop()
         
         # STEP 3: LOAD MODEL
@@ -248,34 +254,22 @@ if run_button:
         ]
         
         model = None
-        model_path = None
+        use_fallback = True
         
         for path in model_paths:
             if os.path.exists(path + ".zip"):
                 try:
                     model = PPO.load(path)
-                    model_path = path
+                    progress_container.success("✅ Model loaded successfully")
+                    use_fallback = False
                     break
                 except Exception:
                     continue
         
-        if model is None:
+        if use_fallback:
             status_container.warning(
-                "⚠️ **Model not found** - Using fallback strategy\n\n"
-                "Using equal-weight portfolio for this session."
+                "⚠️ **Model not found** - Using equal-weight portfolio fallback"
             )
-            use_fallback = True
-        else:
-            status_container.success("✅ Model loaded successfully")
-            use_fallback = False
-            
-            config_path = os.path.join(os.path.dirname(model_path), "training_config.json")
-            if os.path.exists(config_path):
-                with open(config_path, "r") as f:
-                    config = json.load(f)
-                max_assets = config.get("max_assets", len(ticker_list))
-            else:
-                max_assets = len(ticker_list)
         
         # STEP 4: CREATE ENVIRONMENT
         progress_container.info("⚙️ Initializing portfolio environment...")
@@ -290,12 +284,10 @@ if run_button:
                 min_position_size=0.01,
                 max_assets=len(ticker_list)
             )
-            
             obs, _ = env.reset()
             progress_container.success("✅ Environment initialized")
-            
         except Exception as env_error:
-            status_container.error(f"❌ Environment creation failed: {str(env_error)}")
+            status_container.error(f"❌ Environment error: {str(env_error)}")
             st.stop()
         
         # STEP 5: RUN SIMULATION
@@ -330,15 +322,14 @@ if run_button:
                 
                 if i % 30 == 0:
                     status_container.info(
-                        f"🔄 Processing: {prices.index[i].strftime('%Y-%m-%d')} "
-                        f"({i-59}/{total_steps}) | Portfolio: ${portfolio_values[-1]:,.0f}"
+                        f"🔄 {prices.index[i].strftime('%Y-%m-%d')} | "
+                        f"Portfolio: ${portfolio_values[-1]:,.0f}"
                     )
                 
                 if done:
                     break
                     
             except Exception as step_error:
-                st.warning(f"Step {i} warning (continuing): {str(step_error)}")
                 continue
         
         progress_bar.progress(1.0)
@@ -379,15 +370,8 @@ if run_button:
         # Log to database
         try:
             c.execute("INSERT INTO simulation_log VALUES (?, ?, ?, ?, ?, ?)", 
-                (
-                    time.strftime("%Y-%m-%d %H:%M:%S"),
-                    risk_level,
-                    ','.join(ticker_list),
-                    duration,
-                    results_df['portfolio_value'].iloc[-1],
-                    total_return
-                )
-            )
+                (time.strftime("%Y-%m-%d %H:%M:%S"), risk_level, ','.join(ticker_list),
+                 duration, results_df['portfolio_value'].iloc[-1], total_return))
             conn.commit()
         except:
             pass
@@ -395,14 +379,12 @@ if run_button:
     except Exception as e:
         progress_container.empty()
         status_container.error(f"❌ Unexpected error: {str(e)}")
-        st.exception(e)
         st.stop()
     
     # ============= DISPLAY RESULTS =============
     st.markdown("---")
     st.success(f"✅ Simulation completed in {duration}s")
     
-    # Metrics display
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
@@ -463,36 +445,21 @@ if run_button:
         )
         
         fig.add_trace(
-            go.Scatter(
-                x=results_df.index, 
-                y=results_df['portfolio_value'],
-                mode='lines', 
-                name='Portfolio Value',
-                line=dict(color='#2E86AB', width=2)
-            ),
+            go.Scatter(x=results_df.index, y=results_df['portfolio_value'],
+                      mode='lines', name='Portfolio Value',
+                      line=dict(color='#2E86AB', width=2)),
             row=1, col=1
         )
         
-        fig.add_hline(
-            y=initial_capital, 
-            line_dash="dash", 
-            line_color="gray",
-            annotation_text="Initial Capital", 
-            row=1, col=1
-        )
+        fig.add_hline(y=initial_capital, line_dash="dash", line_color="gray",
+                     annotation_text="Initial Capital", row=1, col=1)
         
         drawdown = ((results_df['portfolio_value'].cummax() - results_df['portfolio_value']) / 
                    results_df['portfolio_value'].cummax()) * 100
         
         fig.add_trace(
-            go.Scatter(
-                x=results_df.index, 
-                y=-drawdown,
-                mode='lines', 
-                name='Drawdown',
-                fill='tozeroy', 
-                line=dict(color='red', width=1)
-            ),
+            go.Scatter(x=results_df.index, y=-drawdown, mode='lines', name='Drawdown',
+                      fill='tozeroy', line=dict(color='red', width=1)),
             row=2, col=1
         )
         
@@ -500,14 +467,8 @@ if run_button:
         fig.update_yaxes(title_text="Value ($)", row=1, col=1)
         fig.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
         
-        fig.update_layout(
-            height=600, 
-            showlegend=False, 
-            hovermode='x unified',
-            template='plotly_dark', 
-            paper_bgcolor='#0e1117', 
-            plot_bgcolor='#0e1117'
-        )
+        fig.update_layout(height=600, showlegend=False, hovermode='x unified',
+                         template='plotly_dark', paper_bgcolor='#0e1117', plot_bgcolor='#0e1117')
         st.plotly_chart(fig, use_container_width=True)
     
     with tab2:
@@ -515,23 +476,12 @@ if run_button:
         
         fig = go.Figure()
         for ticker in ticker_list:
-            fig.add_trace(go.Scatter(
-                x=weights_df.index,
-                y=weights_df[ticker],
-                mode='lines',
-                name=ticker,
-                stackgroup='one'
-            ))
+            fig.add_trace(go.Scatter(x=weights_df.index, y=weights_df[ticker],
+                                    mode='lines', name=ticker, stackgroup='one'))
         
-        fig.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Portfolio Weight",
-            hovermode='x unified',
-            height=500,
-            template='plotly_dark',
-            paper_bgcolor='#0e1117',
-            plot_bgcolor='#0e1117'
-        )
+        fig.update_layout(xaxis_title="Date", yaxis_title="Portfolio Weight",
+                         hovermode='x unified', height=500,
+                         template='plotly_dark', paper_bgcolor='#0e1117', plot_bgcolor='#0e1117')
         st.plotly_chart(fig, use_container_width=True)
         
         st.subheader("Average Portfolio Weights")
@@ -540,23 +490,11 @@ if run_button:
         col1, col2 = st.columns(2)
         
         with col1:
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=avg_weights.values * 100, 
-                    y=avg_weights.index,
-                    orientation='h',
-                    marker_color='#2E86AB'
-                )
-            ])
-            fig.update_layout(
-                xaxis_title="Weight (%)",
-                yaxis_title="Ticker",
-                height=400,
-                showlegend=False,
-                template='plotly_dark',
-                paper_bgcolor='#0e1117',
-                plot_bgcolor='#0e1117'
-            )
+            fig = go.Figure(data=[go.Bar(x=avg_weights.values * 100, y=avg_weights.index,
+                                        orientation='h', marker_color='#2E86AB')])
+            fig.update_layout(xaxis_title="Weight (%)", yaxis_title="Ticker",
+                             height=400, showlegend=False,
+                             template='plotly_dark', paper_bgcolor='#0e1117', plot_bgcolor='#0e1117')
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
@@ -566,9 +504,7 @@ if run_button:
                     'Avg Weight': [f"{w*100:.2f}%" for w in avg_weights.values],
                     'Min Weight': [f"{weights_df[t].min()*100:.2f}%" for t in avg_weights.index],
                     'Max Weight': [f"{weights_df[t].max()*100:.2f}%" for t in avg_weights.index]
-                }).set_index('Ticker'),
-                height=400,
-                use_container_width=True
+                }).set_index('Ticker'), height=400, use_container_width=True
             )
     
     with tab3:
@@ -579,52 +515,27 @@ if run_button:
         with col1:
             st.markdown("### Portfolio Metrics")
             metrics_df = pd.DataFrame({
-                'Metric': [
-                    'Initial Capital', 'Final Value', 'Total Return', 'Annualized Return',
-                    'Sharpe Ratio', 'Max Drawdown', 'Volatility (Annual)',
-                    'Best Day', 'Worst Day', 'Avg Daily Return', 'Win Rate', 'Total Trading Days'
-                ],
-                'Value': [
-                    f"${initial_capital:,.2f}",
-                    f"${results_df['portfolio_value'].iloc[-1]:,.2f}",
-                    f"{total_return:.2f}%",
-                    f"{(total_return / (total_days / 252)):.2f}%",
-                    f"{sharpe_ratio:.2f}",
-                    f"{max_drawdown:.2f}%",
-                    f"{volatility:.2f}%",
-                    f"{daily_returns.max()*100:.2f}%",
-                    f"{daily_returns.min()*100:.2f}%",
-                    f"{daily_returns.mean()*100:.4f}%",
-                    f"{win_rate:.2f}%",
-                    f"{total_days}"
-                ]
+                'Metric': ['Initial Capital', 'Final Value', 'Total Return', 'Annualized Return',
+                          'Sharpe Ratio', 'Max Drawdown', 'Volatility (Annual)',
+                          'Best Day', 'Worst Day', 'Avg Daily Return', 'Win Rate', 'Trading Days'],
+                'Value': [f"${initial_capital:,.2f}", f"${results_df['portfolio_value'].iloc[-1]:,.2f}",
+                         f"{total_return:.2f}%", f"{(total_return / (total_days / 252)):.2f}%",
+                         f"{sharpe_ratio:.2f}", f"{max_drawdown:.2f}%", f"{volatility:.2f}%",
+                         f"{daily_returns.max()*100:.2f}%", f"{daily_returns.min()*100:.2f}%",
+                         f"{daily_returns.mean()*100:.4f}%", f"{win_rate:.2f}%", f"{total_days}"]
             })
             st.dataframe(metrics_df, hide_index=True, use_container_width=True)
         
         with col2:
             st.markdown("### Daily Returns Distribution")
             fig = go.Figure()
-            fig.add_trace(go.Histogram(
-                x=daily_returns * 100,
-                nbinsx=50,
-                marker_color='#2E86AB',
-                name='Daily Returns'
-            ))
-            fig.add_vline(
-                x=daily_returns.mean() * 100, 
-                line_dash="dash", 
-                line_color="red",
-                annotation_text=f"Mean: {daily_returns.mean()*100:.3f}%"
-            )
-            fig.update_layout(
-                xaxis_title="Daily Return (%)",
-                yaxis_title="Frequency",
-                height=400,
-                showlegend=False,
-                template='plotly_dark',
-                paper_bgcolor='#0e1117',
-                plot_bgcolor='#0e1117'
-            )
+            fig.add_trace(go.Histogram(x=daily_returns * 100, nbinsx=50,
+                                      marker_color='#2E86AB', name='Daily Returns'))
+            fig.add_vline(x=daily_returns.mean() * 100, line_dash="dash", line_color="red",
+                         annotation_text=f"Mean: {daily_returns.mean()*100:.3f}%")
+            fig.update_layout(xaxis_title="Daily Return (%)", yaxis_title="Frequency",
+                             height=400, showlegend=False,
+                             template='plotly_dark', paper_bgcolor='#0e1117', plot_bgcolor='#0e1117')
             st.plotly_chart(fig, use_container_width=True)
     
     with tab4:
@@ -637,10 +548,8 @@ if run_button:
             csv = results_df.to_csv()
             st.download_button(
                 label="📥 Download Portfolio Values (CSV)",
-                data=csv,
-                file_name=f"portfolio_paper_trading_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True
+                data=csv, file_name=f"portfolio_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv", use_container_width=True
             )
         
         with col2:
@@ -648,76 +557,30 @@ if run_button:
             weights_csv = weights_df.to_csv()
             st.download_button(
                 label="📥 Download Weights History (CSV)",
-                data=weights_csv,
-                file_name=f"weights_history_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True
+                data=weights_csv, file_name=f"weights_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv", use_container_width=True
             )
 
 else:
-    st.info("👈 Configure your portfolio parameters in the sidebar and click '🚀 Start Paper Trading' to begin")
+    st.info("👈 Configure parameters in the sidebar and click '🚀 Start Paper Trading'")
     
     st.subheader("📊 Dashboard Features")
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 📈 Portfolio Performance")
-        st.markdown("""
-        - Real-time portfolio value tracking
-        - Cumulative return visualization
-        - Drawdown analysis
-        - Performance metrics (Sharpe, volatility, max drawdown)
-        """)
-    
+        st.markdown("### 📈 Portfolio Performance\n- Real-time tracking\n- Cumulative returns\n- Drawdown analysis")
     with col2:
-        st.markdown("### 💼 Asset Allocation")
-        st.markdown("""
-        - Dynamic weight adjustments over time
-        - Stacked area chart visualization
-        - Average, min, max weight statistics
-        - Export allocation history
-        """)
+        st.markdown("### 💼 Asset Allocation\n- Dynamic weights\n- Allocation history\n- Export capability")
     
     with st.expander("ℹ️ How to Use", expanded=True):
         st.markdown("""
-        ### Getting Started
-        
-        1. **Configure Portfolio**: Enter your desired tickers (e.g., AAPL,MSFT,GOOGL)
-        2. **Set Parameters**: Choose initial capital, lookback period, and commission rate
-        3. **Select Risk Level**: Choose your risk preference (Low/Moderate/High)
-        4. **Run Simulation**: Click the '🚀 Start Paper Trading' button
-        5. **Analyze Results**: View performance metrics, allocation charts, and statistics
-        6. **Export Data**: Download results as CSV for further analysis
-        
-        ### Features
-        
-        - **AI-Powered Decisions**: Uses trained PPO reinforcement learning model
-        - **Risk Appetite Control**: Filter assets based on your risk preference
-        - **Real Market Data**: Downloads historical prices from Yahoo Finance
-        - **Professional Metrics**: Sharpe ratio, max drawdown, volatility, win rate
-        - **Interactive Charts**: Plotly visualizations for performance and allocation
-        - **Export Ready**: Download CSV files for Excel/Python analysis
-        
-        ### Risk Levels
-        
-        - **Low Risk**: Only safe ETFs (VOO, BND, VTI, etc.)
-        - **Moderate Risk**: Broad stocks & ETFs (excludes meme stocks)
-        - **High Risk**: All assets including volatile stocks
+        ### Quick Start
+        1. Enter tickers (try: AAPL,MSFT,GOOGL,AMZN)
+        2. Set initial capital and period
+        3. Click '🚀 Start Paper Trading'
         
         ### Troubleshooting
-        
-        **"Insufficient data" error?**
-        - Use major tickers: AAPL, MSFT, GOOGL, AMZN, META
-        - Increase lookback period (500+ days recommended)
-        - Check tickers are spelled correctly
-        
-        **"Data download failed" error?**
-        - Check your internet connection
-        - Try again in a few seconds
-        - Use different tickers
-        
-        **"Model not found" warning?**
-        - This is normal on first deployment
-        - System will use equal-weight portfolio
-        - Model loads on subsequent refreshes
+        **Download fails?** Use AAPL, MSFT, GOOGL, AMZN (most reliable on Streamlit Cloud)
+        **Slow?** Try fewer tickers or shorter lookback period
+        **Model not found?** Normal - uses equal-weight fallback
         """)
