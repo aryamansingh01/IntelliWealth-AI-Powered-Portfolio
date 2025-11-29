@@ -45,19 +45,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
-st.markdown("""
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-G7B7RQM88L"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-G7B7RQM88L');
-</script>
-""", unsafe_allow_html=True)
-
-
 st.markdown("""
     <style>
         .main {
