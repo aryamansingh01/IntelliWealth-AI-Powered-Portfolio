@@ -7,6 +7,7 @@ from portfolio_env import DynamicPortfolioEnv
 from stable_baselines3 import PPO
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import streamlit.components.v1 as components
 import json
 import os
 import warnings
@@ -43,6 +44,18 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
+components.html("""
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-G7B7RQM88L"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-G7B7RQM88L');
+</script>
+""", height=0)
 
 st.markdown("""
     <style>
