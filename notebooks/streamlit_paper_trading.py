@@ -46,7 +46,7 @@ st.set_page_config(
 )
 
 
-components.html("""
+st.markdown("""
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-G7B7RQM88L"></script>
 <script>
@@ -55,7 +55,8 @@ components.html("""
   gtag('js', new Date());
   gtag('config', 'G-G7B7RQM88L');
 </script>
-""", height=0)
+""", unsafe_allow_html=True)
+
 
 st.markdown("""
     <style>
