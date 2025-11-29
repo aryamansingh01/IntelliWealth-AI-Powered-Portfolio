@@ -143,7 +143,7 @@ if run_button:
         with progress_container.container():
             st.info("Loading AI model...")
         
-        model_path = "models/ppo_dynamic_portfolio_padded"
+        model_path = "notebooks/models/ppo_dynamic_portfolio_padded"
         if not os.path.exists(f"{model_path}.zip"):
             status_container.error(f"Model not found at {model_path}")
             st.stop()
